@@ -1,0 +1,23 @@
+services:
+  consumer:
+    build:
+      context: ./consumer
+    container_name: media-consumer
+    ports:
+      - "50051:50051"   # gRPC uploads
+      - "8080:8080"     # Browser gallery
+    volumes:
+      - ./docker/consumer-compose.properties:/app/config.properties:ro
+      - ./consumer-data:/app/data
+    restart: unless-stopped
+
+  producer:
+    build:
+      context: ./producer
+    container_name: media-producer
+    depends_on:
+      - consumer
+    volumes:
+      - ./docker/producer-compose.properties:/app/config.properties:ro
+      - ./demo-videos:/app/videos:ro
+    restart: "no"

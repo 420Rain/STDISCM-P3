@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>[P3] Media Upload Service</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>[P3] Media Upload Service</h1>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro-row">
+      <div>
+        <h2>Uploaded videos</h2>
+        <p class="muted">Hover over a video for a 10-second preview. Click a video to watch it in full.</p>
+      </div>
+    </section>
+
+    <section id="gallery" class="gallery-grid" aria-live="polite">
+      <div class="empty-state">No videos have been uploaded yet.</div>
+    </section>
+
+    <section class="queue-section">
+      <div class="section-heading">
+        <h2>Incoming and queued uploads</h2>
+      </div>
+      <div class="configuration-row" id="config-summary" aria-label="Current configuration">
+        <div class="config-item"><span>Producer threads (p)</span><strong>—</strong></div>
+        <div class="config-item"><span>Consumer threads (c)</span><strong>—</strong></div>
+        <div class="config-item"><span>Max queue length (q)</span><strong>—</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>File</th><th>Upload ID</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="queue-body"><tr><td colspan="4" class="empty-cell">No active uploads.</td></tr></tbody>
+        </table>
+      </div>
+      <p class="footnote">A receiving or queued upload can be cancelled. Once a worker has started processing it, cancellation is no longer available.</p>
+    </section>
+  </main>
+
+  <div id="video-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Video player">
+    <div class="modal-backdrop" data-close="true"></div>
+    <div class="modal-panel">
+      <div class="modal-heading"><div><span class="eyebrow">NOW PLAYING</span><strong id="modal-title">Video</strong></div><button id="close-modal" class="icon-button" aria-label="Close player">×</button></div>
+      <video id="full-player" controls autoplay playsinline></video>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

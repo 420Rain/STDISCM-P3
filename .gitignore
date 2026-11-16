@@ -1,0 +1,15 @@
+# Maven outputs
+**/target/
+
+# Runtime data
+consumer-data/
+producer/data/
+consumer/data/
+video-storage
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
