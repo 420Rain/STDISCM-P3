@@ -5,6 +5,8 @@ import com.example.mediaupload.web.WebGalleryServer;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -30,13 +32,20 @@ public final class ConsumerMain {
                 .addService(new GrpcUploadService(coordinator))
                 .build()
                 .start();
-        WebGalleryServer gallery = new WebGalleryServer(coordinator, config.httpPort());
+        Path keystore = config.httpsKeystore();
+        if (keystore != null && !Files.isRegularFile(keystore)) {
+            System.out.println("[Consumer] WARNING: https.keystore " + keystore.toAbsolutePath()
+                    + " not found; serving the gallery over plain HTTP. Generate it with mkcert (see README).");
+            keystore = null;
+        }
+        WebGalleryServer gallery = new WebGalleryServer(coordinator, config.httpPort(),
+                keystore, config.httpsKeystorePassword());
         gallery.start();
 
         System.out.println("----------------------------------------------------");
         System.out.println("Media upload consumer is running.");
         System.out.println("gRPC upload port: " + config.grpcPort());
-        System.out.println("Gallery: http://localhost:" + config.httpPort());
+        System.out.println("Gallery: " + (gallery.isHttps() ? "https" : "http") + "://localhost:" + config.httpPort());
         System.out.printf("Producer threads (p): %d | Consumer workers (c): %d | Max queue length (q): %d%n",
                 config.p(), config.c(), config.q());
         System.out.println("Stored files: " + config.storageDir().toAbsolutePath());

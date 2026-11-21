@@ -8,6 +8,8 @@ import com.example.mediaupload.grpc.ActionReply;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsServer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,11 +19,16 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 
 /** Lightweight browser UI and HTTP API. gRPC is used only for producer uploads. */
 public final class WebGalleryServer {
@@ -29,10 +36,25 @@ public final class WebGalleryServer {
     private final UploadCoordinator coordinator;
     private final HttpServer server;
     private final ExecutorService httpExecutor;
+    private final boolean https;
 
-    public WebGalleryServer(UploadCoordinator coordinator, int port) throws IOException {
+    /**
+     * Serves plain HTTP when {@code keystore} is null. Otherwise serves HTTPS using the given
+     * PKCS#12 keystore (for example one produced by {@code mkcert -pkcs12}).
+     */
+    public WebGalleryServer(UploadCoordinator coordinator, int port, Path keystore, String keystorePassword)
+            throws IOException {
         this.coordinator = coordinator;
-        this.server = HttpServer.create(new InetSocketAddress(port), 0);
+        InetSocketAddress address = new InetSocketAddress(port);
+        if (keystore == null) {
+            this.server = HttpServer.create(address, 0);
+            this.https = false;
+        } else {
+            HttpsServer httpsServer = HttpsServer.create(address, 0);
+            httpsServer.setHttpsConfigurator(new HttpsConfigurator(loadSslContext(keystore, keystorePassword)));
+            this.server = httpsServer;
+            this.https = true;
+        }
         this.server.createContext("/", this::handle);
         this.httpExecutor = Executors.newFixedThreadPool(8);
         this.server.setExecutor(httpExecutor);
@@ -40,6 +62,26 @@ public final class WebGalleryServer {
 
     public void start() {
         server.start();
+    }
+
+    public boolean isHttps() {
+        return https;
+    }
+
+    private static SSLContext loadSslContext(Path keystore, String password) throws IOException {
+        char[] pass = password.toCharArray();
+        try (InputStream input = Files.newInputStream(keystore)) {
+            KeyStore store = KeyStore.getInstance("PKCS12");
+            store.load(input, pass);
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(store, pass);
+            SSLContext context = SSLContext.getInstance("TLS");
+            context.init(kmf.getKeyManagers(), null, null);
+            return context;
+        } catch (GeneralSecurityException e) {
+            throw new IOException("Could not load HTTPS keystore " + keystore.toAbsolutePath()
+                    + " (check https.keystore.password): " + e.getMessage(), e);
+        }
     }
 
     public void stop() {

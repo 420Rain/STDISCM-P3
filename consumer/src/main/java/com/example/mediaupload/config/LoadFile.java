@@ -19,7 +19,8 @@ public final class LoadFile {
     private static final Set<String> ALLOWED_KEYS = Set.of(
             "p", "c", "q", "consumer.host", "grpc.port", "http.port",
             "producer.input.dir", "storage.dir", "ffmpeg.path",
-            "chunk.size.bytes", "max.video.mb", "max.retries", "retry.delay.ms"
+            "chunk.size.bytes", "max.video.mb", "max.retries", "retry.delay.ms",
+            "https.keystore", "https.keystore.password"
     );
 
     private LoadFile() { }
@@ -90,10 +91,17 @@ public final class LoadFile {
             throw new IllegalArgumentException("Directory and FFmpeg settings cannot be blank.");
         }
 
+        // Optional HTTPS for the consumer's gallery: a PKCS#12 keystore, e.g. made by
+        // `mkcert -pkcs12`. mkcert's default .p12 password is "changeit".
+        String httpsKeystoreRaw = values.get("https.keystore");
+        Path httpsKeystore = httpsKeystoreRaw == null ? null : Path.of(httpsKeystoreRaw);
+        String httpsKeystorePassword = values.getOrDefault("https.keystore.password", "changeit");
+
         long maxVideoBytes = Math.multiplyExact((long) maxVideoMb, 1024L * 1024L);
         return new Config(p, c, q, consumerHost, grpcPort, httpPort,
                 Path.of(inputDir), Path.of(storageDir), ffmpegPath,
-                chunkSize, maxVideoBytes, maxRetries, retryDelayMs);
+                chunkSize, maxVideoBytes, maxRetries, retryDelayMs,
+                httpsKeystore, httpsKeystorePassword);
     }
 
     private static int positiveInt(Map<String, String> values, String key,
@@ -152,5 +160,7 @@ public final class LoadFile {
             int chunkSizeBytes,
             long maxVideoBytes,
             int maxRetries,
-            long retryDelayMs) { }
+            long retryDelayMs,
+            Path httpsKeystore,
+            String httpsKeystorePassword) { }
 }

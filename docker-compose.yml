@@ -5,10 +5,11 @@ services:
     container_name: media-consumer
     ports:
       - "50051:50051"   # gRPC uploads
-      - "8080:8080"     # Browser gallery
+      - "8080:8080"     # Browser gallery (HTTPS when certs/localhost.p12 exists)
     volumes:
       - ./docker/consumer-compose.properties:/app/config.properties:ro
       - ./consumer-data:/app/data
+      - ./certs:/app/certs:ro      # mkcert keystore for HTTPS gallery (optional)
     restart: unless-stopped
 
   producer:
