@@ -370,3 +370,38 @@ The laptops do not need Internet access just to exchange the upload data. They n
 6. Open the gallery on the consumer laptop at `http://localhost:8080`, or on the producer laptop at `http://<consumer-laptop-ip>:8080` if TCP `8080` is allowed.
 
 If the two laptops are on different networks (for example, separate phone hotspots), they cannot normally reach each other's private IP addresses directly. Use a private VPN/overlay network such as Tailscale or WireGuard, or another routed connection. A VPN generally needs an Internet connection to connect separate locations, unless you have a private network linking them already. Keep this demo's unauthenticated plaintext ports private.
+
+## 18. HTTPS gallery with mkcert
+
+The browser gallery can be served over trusted HTTPS on `localhost` using [mkcert](https://github.com/FiloSottile/mkcert), which creates a local certificate authority and installs it in your OS/browser trust stores. The gRPC upload channel is unchanged (still plaintext).
+
+1. Install mkcert (once per machine):
+
+   ```powershell
+   winget install FiloSottile.mkcert      # or: choco install mkcert / scoop install mkcert / brew install mkcert
+   mkcert -install                        # trusts the local CA; Windows shows a confirmation dialog
+   ```
+
+   Firefox uses its own trust store; restart it after `mkcert -install`.
+
+2. From the project root, generate a PKCS#12 keystore that Java can load directly:
+
+   ```powershell
+   mkdir certs
+   mkcert -pkcs12 -p12-file certs/localhost.p12 localhost 127.0.0.1 ::1
+   ```
+
+   mkcert's default `.p12` password is `changeit`, which matches `https.keystore.password` in the provided configs. Add any other host names or LAN IPs you will browse to (for example `192.168.1.20`) to the same command. Note that other machines only trust the certificate if mkcert's root CA is installed on them too (`mkcert -CAROOT` shows where it is). `certs/` is git-ignored because it contains a private key.
+
+3. Run the consumer as usual:
+   - **Maven:** `consumer/config.properties` points at `../certs/localhost.p12`, so start it from the `consumer/` folder.
+   - **Docker:** `docker-compose.yml` mounts `./certs` into the consumer at `/app/certs`, and `docker/consumer-compose.properties` points there.
+
+4. Open **https://localhost:8080**. The startup banner prints `Gallery: https://...` when HTTPS is active.
+
+| Key | Purpose | Default |
+|---|---|---|
+| `https.keystore` | PKCS#12 keystore for the gallery. If unset, the gallery uses plain HTTP. | unset |
+| `https.keystore.password` | Keystore password | `changeit` |
+
+If `https.keystore` is set but the file does not exist, the consumer logs a warning and falls back to plain HTTP, so the project still runs before certificates are generated. A keystore that exists but cannot be opened (wrong password, corrupt file) stops startup with an error.
